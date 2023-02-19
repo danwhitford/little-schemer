@@ -270,3 +270,75 @@
     (else (add1 (quoto (o- n m) m)))))
 
 (check-equal? (quoto 15 4) 3)
+
+(define (length lat)
+  (cond
+    ((null? lat) 0)
+    (else (add1 (length (cdr lat))))))
+
+(check-equal? (length '(hotdogs with mustard cabbage and pickles)) 6)
+(check-equal? (length '(ham and cheese on rye)) 5)
+
+(define (pick n lat)
+  (cond
+    ((== n 1) (car lat))
+    (else (pick (sub1 n) (cdr lat)))))
+
+(check-equal? (pick 4 '(lasagna spaghetti revioli macaroni meatball)) 'macaroni)
+
+(define (rempick n lat)
+  (cond
+    ((== n 1) (cdr lat))
+    (else
+     (cons (car lat) (rempick (sub1 n) (cdr lat))))))
+
+(check-equal? (rempick 3 '(hotdogs with hot mustard)) '(hotdogs with mustard))
+
+(define (no-nums lat)
+  (cond
+    ((null? lat) '())
+    ((number? (car lat))
+     (no-nums (cdr lat)))
+    (else
+     (cons (car lat) (no-nums (cdr lat))))))
+
+(define (all-nums lat)
+  (cond
+    ((null? lat) '())
+    ((not (number? (car lat)))
+     (all-nums (cdr lat)))
+    (else
+     (cons (car lat) (all-nums (cdr lat))))))
+
+(check-equal? (all-nums '(5 pears 6 prunes 9 dates)) '(5 6 9))
+
+(define (eqan? a1 a2)
+  (cond
+    ((and (number? a1) (number? a2))
+     (== a1 a2))
+    ((or (number? a1) (number? a2))
+     #f)
+    (else (eq? a1 a2))))
+
+(define (occur a lat)
+  (cond
+    ((null? lat) 0)
+    ((eqan? (car lat) a)
+     (add1 (occur a (cdr lat))))
+    (else
+     (occur a (cdr lat)))))
+
+(check-equal? (occur 'foo '(ham egg ham egg and chips)) 0)
+(check-equal? (occur 'ham '(ham egg ham egg and chips)) 2)
+(check-equal? (occur 'chips '(ham egg ham egg and chips)) 1)
+
+(define (one? n)
+  (eqan? n 1))
+
+(define (rempick2 n lat)
+  (cond
+    ((one? n) (cdr lat))
+    (else
+     (cons (car lat) (rempick (sub1 n) (cdr lat))))))
+
+(check-equal? (rempick2 3 '(lemon meringue salty pie)) '(lemon meringue pie))
