@@ -67,7 +67,7 @@
 (define (insertR new old lat)
   (cond
     ((null? lat) '())
-    ((equal? old (car lat))
+    ((eq? old (car lat))
      (cons old (cons new (cdr lat))))
     (else
      (cons (car lat) (insertR new old (cdr lat))))))
@@ -82,7 +82,7 @@
 (define (insertL new old lat)
   (cond
     ((null? lat) '())
-    ((equal? old (car lat))
+    ((eq? old (car lat))
      (cons new lat))
     (else
      (cons (car lat) (insertL new old (cdr lat))))))
@@ -97,7 +97,7 @@
 (define (subst new old lat)
   (cond
     ((null? lat) '())
-    ((equal? old (car lat))
+    ((eq? old (car lat))
      (cons new (cdr lat)))
     (else
      (cons (car lat) (subst new old (cdr lat))))))
@@ -109,8 +109,8 @@
   (cond
     ((null? lat) '())
     ((or
-      (equal? o1 (car lat))
-      (equal? o2 (car lat)))
+      (eq? o1 (car lat))
+      (eq? o2 (car lat)))
      (cons new (cdr lat)))
     (else
      (cons (car lat) (subst2 new o1 o2 (cdr lat))))))
@@ -121,10 +121,107 @@
 (define (multirember a lat)
   (cond
     ((null? lat) '())
-    ((equal? (car lat) a)
+    ((eq? (car lat) a)
      (multirember a (cdr lat)))
     (else
      (cons (car lat) (multirember a (cdr lat))))))
 
 (check-equal? (multirember 'cup '(coffee cup tea cup and hick cup))
               '(coffee tea and hick))
+
+(define (multiinsertR new old lat)
+  (cond
+    ((null? lat) '())
+    ((eq? (car lat) old)
+     (cons old (cons new (multiinsertR new old (cdr lat)))))
+    (else
+     (cons (car lat) (multiinsertR new old (cdr lat))))))
+
+(check-equal? (multiinsertR 'foo 'bar '(foo bar baz bar))
+              '(foo bar foo baz bar foo))
+
+(define (multiinsertL new old lat)
+  (cond
+    ((null? lat) '())
+    ((eq? (car lat) old)
+     (cons new (cons old (multiinsertL new old (cdr lat)))))
+    (else
+     (cons (car lat) (multiinsertL new old (cdr lat))))))
+
+(check-equal? (multiinsertL 'foo 'bar '(foo bar baz bar))
+              '(foo foo bar baz foo bar))
+(check-equal? (multiinsertL 'fried 'fish '(chips and fish or fish and fried))
+              '(chips and fried fish or fried fish and fried))
+
+(define (multisubst new old lat)
+  (cond
+    ((null? lat) '())
+    ((eq? (car lat) old)
+     (cons new (multisubst new old (cdr lat))))
+    (else
+     (cons (car lat) (multisubst new old (cdr lat))))))
+
+(check-equal? (multisubst 'foo 'bar '(baz bar baz bar))
+              '(baz foo baz foo))
+
+(define (add1 n)
+  (+ n 1))
+
+(define (sub1 n)
+  (- n 1))
+
+(check-equal? (add1 67) 68)
+(check-equal? (sub1 5) 4)
+
+(define (o+ n m)
+  (if (zero? m)
+      n
+      (add1 (o+ n (sub1 m)))))
+
+(define (o- n m)
+  (if (zero? m)
+      n
+      (sub1 (o- n (sub1 m)))))
+
+(check-equal? (o+ 46 12) 58)
+(check-equal? (o- 14 3) 11)
+(check-equal? (o- 17 9) 8)
+
+(define (addtup tup)
+  (cond
+    ((null? tup) 0)
+    (else (o+ (car tup) (addtup (cdr tup))))))
+
+(check-equal? (addtup '(1 2 3)) 6)
+(check-equal? (addtup '(1 2 3 4 5)) 15)
+
+(define (X n m)  
+  (cond
+    ((zero? m) 0)
+    (else (o+ n (X n (sub1 m))))))
+
+(check-equal? (X 5 10) 50)
+(check-equal? (X 3 4) 12)
+(check-equal? (X 20 3) 60)
+(check-equal? (X 12 3) 36)
+
+(define (tup+ tup1 tup2)
+  (cond    
+    ((null? tup1) tup2)
+    ((null? tup2) tup1)
+    (else
+     (cons
+      (o+ (car tup1) (car tup2))
+      (tup+ (cdr tup1) (cdr tup2))))))
+
+(check-equal? (tup+ '(3 6 9 11 4) '(8 5 2 0 7))
+              '(11 11 11 11 11))
+(check-equal? (tup+ '(2 3) '(4 6))              
+              '(6 9))
+(check-equal? (tup+ '(3 7) '(4 6))              
+              '(7 13))
+(check-equal? (tup+ '(3 7) '(4 6 8 1))              
+              '(7 13 8 1))
+(check-equal? (tup+ '(3 7 8 1) '(4 6))              
+              '(7 13 8 1))
+
