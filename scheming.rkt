@@ -173,7 +173,7 @@
 (check-equal? (add1 67) 68)
 (check-equal? (sub1 5) 4)
 
-(define (o+ n m)
+(define (o+ n m)  
   (if (zero? m)
       n
       (add1 (o+ n (sub1 m)))))
@@ -225,3 +225,48 @@
 (check-equal? (tup+ '(3 7 8 1) '(4 6))              
               '(7 13 8 1))
 
+(define (o> n m)
+  (cond
+    ((zero? n) #f)
+    ((zero? m) #t)    
+    (else (o> (sub1 n) (sub1 m)))))
+
+(check-equal? (o> 12 133) #f)
+(check-equal? (o> 120 11) #t)
+(check-equal? (o> 3 3) #f)
+
+(define (o< n m)
+  (cond
+    ((zero? m) #f)
+    ((zero? n) #t)
+    (else (o< (sub1 n) (sub1 m)))))
+
+(check-equal? (o< 4 6) #t)
+(check-equal? (o< 8 3) #f)
+(check-equal? (o< 6 6) #f)
+
+(define (== n m)
+  (cond
+    ((o> n m) #f)
+    ((o< n m) #f)
+    (else #t)))
+
+(check-equal? (== 4 6) #f)
+(check-equal? (== 8 3) #f)
+(check-equal? (== 6 6) #t)
+
+(define (expo n m)
+  (cond
+    ((zero? m) 1)
+    (else (X n (expo n (sub1 m))))))
+
+(check-equal? (expo 1 1) 1)
+(check-equal? (expo 2 3) 8)
+(check-equal? (expo 5 3) 125)
+
+(define (quoto n m)
+  (cond
+    ((o< n m) 0)
+    (else (add1 (quoto (o- n m) m)))))
+
+(check-equal? (quoto 15 4) 3)
