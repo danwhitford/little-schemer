@@ -342,3 +342,74 @@
      (cons (car lat) (rempick (sub1 n) (cdr lat))))))
 
 (check-equal? (rempick2 3 '(lemon meringue salty pie)) '(lemon meringue pie))
+
+(define (rember* a lat)
+  (cond
+    ((null? lat) '())
+    ((atom? (car lat))     
+     (cond
+       ((eq? (car lat) a)
+        (rember* a (cdr lat)))
+       (else
+        (cons (car lat) (rember* a (cdr lat))))))
+    (else
+     (cons (rember* a (car lat)) (rember* a (cdr lat))))))
+
+(check-equal? (rember* 'cup '((coffee) cup ((tea) cup) (and (hick)) cup))
+              '((coffee) ((tea)) (and (hick))))
+(check-equal? (rember* 'sauce '(((tomato sauce)) ((bean) sauce) (and ((flying)) sauce)))
+              '(((tomato)) ((bean)) (and ((flying)))))
+
+(check-equal? (lat? '(((tomato sauce)) ((bean) sauce_ )and ((flying)) sauce))
+              #f)
+
+(define (insertR* new old l)  
+  (cond
+    ((null? l) '())
+    ((atom? (car l))
+     (cond
+       ((eq? (car l) old)
+        (cons old (cons new (insertR* new old (cdr l)))))
+       (else
+        (cons (car l) (insertR* new old (cdr l))))))
+    (else
+     (cons (insertR* new old (car l)) (insertR* new old (cdr l))))))
+
+(check-equal? (insertR*
+               'roast
+               'chuck
+               '((how much (wood))
+                 could
+                 ((a (wood) chuck))
+                 (((chuck)))
+                 (if (a) ((wood chuck)))
+                 could chuck wood))
+              '((how much (wood))
+                could
+                ((a (wood) chuck roast))
+                (((chuck roast)))
+                (if (a) ((wood chuck roast)))
+                could chuck roast wood))
+
+(define (occurs* a l)
+  (cond
+   ((null? l) 0)
+   ((atom? (car l))
+    (cond
+      ((eq? (car l) a)
+       (add1 (occurs* a (cdr l))))
+      (else
+       (occurs* a (cdr l)))))
+   (else
+    (o+ (occurs* a (car l)) (occurs* a (cdr l))))))
+
+(check-equal? (occurs*
+               'banana
+               '((banana)
+                 (split ((((banana ice)))
+                         (cream (banana))
+                         sherbet))
+                 (banana)
+                 (bread)
+                 (banana brandy)))
+              5)
