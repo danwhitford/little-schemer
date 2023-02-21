@@ -393,15 +393,15 @@
 
 (define (occurs* a l)
   (cond
-   ((null? l) 0)
-   ((atom? (car l))
-    (cond
-      ((eq? (car l) a)
-       (add1 (occurs* a (cdr l))))
-      (else
-       (occurs* a (cdr l)))))
-   (else
-    (o+ (occurs* a (car l)) (occurs* a (cdr l))))))
+    ((null? l) 0)
+    ((atom? (car l))
+     (cond
+       ((eq? (car l) a)
+        (add1 (occurs* a (cdr l))))
+       (else
+        (occurs* a (cdr l)))))
+    (else
+     (o+ (occurs* a (car l)) (occurs* a (cdr l))))))
 
 (check-equal? (occurs*
                'banana
@@ -413,3 +413,152 @@
                  (bread)
                  (banana brandy)))
               5)
+
+(define (subst* new old l)
+  (cond
+    ((null? l) '())
+    ((atom? (car l))
+     (cond
+       ((eq? (car l) old)
+        (cons new (subst* new old (cdr l))))
+       (else
+        (cons (car l) (subst* new old (cdr l))))))
+    (else
+     (cons (subst* new old (car l)) (subst* new old (cdr l))))))
+
+(check-equal? (subst*
+               'orange
+               'banana
+               '((banana)
+                 (split ((((banana ice)))
+                         (cream (banana))
+                         sherbert))
+                 (banana)
+                 (bread)
+                 (banana brandy)))
+              '((orange)
+                (split ((((orange ice)))
+                        (cream (orange))
+                        sherbert))
+                (orange)
+                (bread)
+                (orange brandy)))
+
+(define (insertL* new old l)
+  (cond
+    ((null? l) '())
+    ((atom? (car l))
+     (cond
+       ((eq? (car l) old)
+        (cons new (cons old (insertL* new old (cdr l)))))
+       (else
+        (cons (car l) (insertL* new old (cdr l))))))
+    (else
+     (cons (insertL* new old (car l)) (insertL* new old (cdr l))))))
+
+(check-equal? (insertL*
+               'pecker
+               'chuck
+               '((how much (wood))
+                 could
+                 ((a (wood) chuck))
+                 (((chuck)))
+                 (if (a) ((wood chuck)))
+                 could chuck wood))
+              '((how much (wood))
+                could
+                ((a (wood) pecker chuck))
+                (((pecker chuck)))
+                (if (a) ((wood pecker chuck)))
+                could pecker chuck wood))
+
+(define (member* a l)
+  (cond
+    ((null? l) #f)
+    ((atom? (car l))
+     (cond
+       ((eq? (car l) a) #t)
+       (else (member* a (cdr l)))))
+    (else
+     (or (member* a (car l)) (member* a (cdr l))))))
+
+(check-equal? (member* 'chips '((potato) (chips ((with) fish) (chips)))) #t)
+
+(define (leftmost l)
+  (cond    
+    ((atom? (car l))
+     (car l))
+    (else
+     (leftmost (car l)))))
+
+(check-equal? (leftmost '((potato) (chips ((with) fish) (chips)))) 'potato)
+
+(define (eqlist? l1 l2)
+  (cond
+    ((and (null? l1) (null? l2)) ;; Both are empty
+     #t)
+    ((or (null? l1) (null? l2)) ;; Only one is empty
+     #f)
+    ((and (atom? (car l1)) (atom? (car l2))) ;; Both are atoms
+     (and (eqan? (car l1) (car l2)) (eqlist? (cdr l1) (cdr l2))))
+    ((or (atom? (car l1)) (atom? (car l2))) ;; One is an atom one is a list
+     #f)    
+    (else ;; Both are lists
+     (and (eqlist? (car l1) (car l2)) (eqlist? (cdr l1) (cdr l2))))))
+
+(check-equal? (eqlist? '(strawberry ice cream) '(strawberry ice cream)) #t)
+(check-equal? (eqlist? '(strawberry ice cream) '(strawberry cream ice)) #f)
+(check-equal? (eqlist? '((banana) split) '(banana (split))) #f)
+(check-equal? (eqlist? '(beef ((sausage)) (and (soda))) '(beef ((salami)) (and (soda)))) #f)
+(check-equal? (eqlist? '(beef ((sausage)) (and (soda))) '(beef ((sausage)) (and (soda)))) #t)
+(check-equal? (eqlist? '() '()) #t)
+(check-equal? (eqlist? '() '(pancakes)) #f)
+
+(define (equal? s1 s2)
+  (cond
+    ((and (atom? s1) (atom? s2)) ;; Both atoms
+     (eqan? s1 s2))
+    ((or (atom? s1) (atom? s2)) ;; One atom
+     #f)
+    (else ;; Both lists
+     (eqlist? s1 s2))))
+
+(check-equal? (equal? '(strawberry ice cream) '(strawberry ice cream)) #t)
+(check-equal? (equal? '(strawberry ice cream) '(strawberry cream ice)) #f)
+(check-equal? (equal? '((banana) split) '(banana (split))) #f)
+(check-equal? (equal? '(beef ((sausage)) (and (soda))) '(beef ((salami)) (and (soda)))) #f)
+(check-equal? (equal? '(beef ((sausage)) (and (soda))) '(beef ((sausage)) (and (soda)))) #t)
+(check-equal? (equal? '() '()) #t)
+(check-equal? (equal? '() '(pancakes)) #f)
+(check-equal? (equal? 'foo 'foo) #t)
+(check-equal? (equal? 'foo 'bar) #f)
+
+(define (eqlist2? l1 l2)
+  (cond
+    ((and (null? l1) (null? l2)) ;; Both are empty
+     #t)
+    ((or (null? l1) (null? l2)) ;; Only one is empty
+     #f) 
+    (else ;; Both are lists
+     (equal? l1 l2))))
+
+(check-equal? (eqlist2? '(strawberry ice cream) '(strawberry ice cream)) #t)
+(check-equal? (eqlist2? '(strawberry ice cream) '(strawberry cream ice)) #f)
+(check-equal? (eqlist2? '((banana) split) '(banana (split))) #f)
+(check-equal? (eqlist2? '(beef ((sausage)) (and (soda))) '(beef ((salami)) (and (soda)))) #f)
+(check-equal? (eqlist2? '(beef ((sausage)) (and (soda))) '(beef ((sausage)) (and (soda)))) #t)
+(check-equal? (eqlist2? '() '()) #t)
+(check-equal? (eqlist2? '() '(pancakes)) #f)
+
+(define (numbered? aexp)
+  (cond
+    ((atom? aexp)
+     (number? aexp))
+    (else
+     (and
+      (numbered? (car aexp))
+      (numbered? (car (cdr (cdr aexp))))))))
+
+(check-equal? (numbered? 1) #t)
+(check-equal? (numbered? '(2 + (4 * 5))) #t)
+(check-equal? (numbered? '(2 * sausage)) #f)
