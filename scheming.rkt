@@ -560,5 +560,220 @@
       (numbered? (car (cdr (cdr aexp))))))))
 
 (check-equal? (numbered? 1) #t)
+(check-equal? (numbered? 'pancakes) #f)
 (check-equal? (numbered? '(2 + (4 * 5))) #t)
+(check-equal? (numbered? '(2 f (4 g 5))) #t)
 (check-equal? (numbered? '(2 * sausage)) #f)
+
+(define (shadow->int ch)
+  (cond
+    ((null? ch) 0)
+    (else
+     (add1 (shadow->int (cdr ch))))))
+
+(check-equal? (shadow->int '()) 0)
+(check-equal? (shadow->int '( () )) 1)
+(check-equal? (shadow->int '( ()() )) 2)
+(check-equal? (shadow->int '( ()()()()() )) 5)
+
+(define (value nexp)
+  (cond
+    ((atom? nexp)
+     nexp)    
+    ((eq? (operator nexp) '+)
+     (+ (value (1st-sub-exp nexp)) (value (2nd-sub-exp nexp))))
+    ((eq? (car nexp) '^)
+     (expo (value (1st-sub-exp nexp)) (value (2nd-sub-exp nexp))))))
+
+(define (1st-sub-exp nexp)
+  (car (cdr nexp)))
+
+(define (2nd-sub-exp nexp)
+  (car (cdr (cdr nexp))))
+
+(define (operator nexp)
+  (car nexp))
+
+(check-equal? (value 13) 13)
+(check-equal? (value '(+ 1 3)) 4)
+(check-equal? (value '(+ 1 (^ 3 4))) 82)
+
+(define (shadow-zero? n)
+  (null? n))
+
+(check-equal? (shadow-zero? '()) #t)
+(check-equal? (shadow-zero? '(())) #f)
+
+(define (shadow-add1 n)
+  (cons '() n))
+
+(check-equal? (shadow-add1 '()) '(()))
+(check-equal? (shadow-add1 '(())) '(()()))
+
+(define (shadow-sub1 n)
+  (cdr n))
+
+(check-equal? (shadow-sub1 '(())) '())
+(check-equal? (shadow-sub1 '(()())) '(()))
+
+(define (shadow-+ n m)
+  (cond
+    ((shadow-zero? m) n)
+    (else
+     (shadow-add1 (shadow-+ n (shadow-sub1 m))))))
+
+(check-equal? (shadow-+ '() '()) '())
+(check-equal? (shadow-+ '(()) '()) '(()))
+(check-equal? (shadow-+ '(()) '(()())) '(()()()))
+(check-equal? (shadow-+ '(()()) '(()())) '(()()()()))
+
+(define (set? lat)
+  (cond
+    ((null? lat) #t)
+    ((member? (car lat) (cdr lat)) #f)
+    (else (set? (cdr lat)))))
+
+(check-equal? (set? '(apple peaches apple plum)) #f)
+(check-equal? (set? '(apple peaches pears plum)) #t)
+(check-equal? (set? '(apple 3 pear 4 9 apple 3 4)) #f)
+
+(define (makeset lat)
+  (cond
+    ((null? lat) '())
+    (else
+     (cons (car lat) (makeset (multirember (car lat) (cdr lat)))))))
+
+(check-equal? (makeset '(apple peach pear peach
+                               plum apple lemon peach))
+              '(apple peach pear plum lemon))
+(check-equal? (makeset '(apple 3 pear 4 9 apple 3 4))
+              '(apple 3 pear 4 9))
+
+(define (subset? set1 set2)
+  (cond
+    ((null? set1) #t)
+    (else (and (member? (car set1) set2)
+               (subset? (cdr set1) set2)))))
+
+(check-equal? (subset? '(5 chicken wings) '(5 hamburgers
+                                              2 pieces fried chicken and
+                                              light duckling wings))
+              #t)
+(check-equal? (subset? '(4 pounds of horseradish)
+                       '(four pounds chicken and
+                              5 ounces horseradish))
+              #f)
+;; The Devil's Line
+
+(define (eqset? set1 set2)
+  (and (subset? set1 set2)
+       (subset? set2 set1)))
+
+(check-equal? (eqset? '(6 large chickens with wings)
+                      '(6 chickens with large wings))
+              #t)
+
+(define (intersect? set1 set2)
+  (cond
+    ((null? set1) #f)
+    (else
+     (or (member? (car set1) set2)
+         (intersect? (cdr set1) set2)))))
+
+(check-equal? (intersect? '(stewed tomatoes and macaroni)
+                          '(macaroni and cheese))
+              #t)
+
+(define (intersect set1 set2)
+  (cond
+    ((null? set1) '())
+    ((member? (car set1) set2)
+     (cons (car set1) (intersect (cdr set1) set2)))
+    (else
+     (intersect (cdr set1) set2))))
+
+(check-equal? (intersect '(stewed tomatoes and macaroni)
+                         '(macaroni and cheese))
+              '(and macaroni))
+
+(define (union set1 set2)
+  (cond
+    ((null? set1) set2)
+    ((member? (car set1) set2)
+     (union (cdr set1) set2))
+    (else
+     (cons (car set1) (union (cdr set1) set2)))))
+
+(check-equal? (union '(stewed tomatoes and macaroni casserole)
+                     '(macaroni and cheese))
+              '(stewed tomatoes casserole macaroni and cheese))
+
+(define (intersectall l-set)
+  (cond
+    ((null? (cdr l-set)) (car l-set))
+    (else     
+      (intersect (car l-set) (intersectall (cdr l-set))))))
+
+(check-equal? (intersectall '((a b c) (c a d e) (e f g h a b))) '(a))
+(check-equal? (intersectall '((6 pears and)
+                              (3 peaches and 6 peppers)
+                              (8 pears and 6 plums)
+                              (and 6 prunes with some apples)))
+              '(6 and))
+
+(define (fun? rel)
+  (set? (firsts rel)))
+
+(check-equal? (fun? '((4 3) (4 2) (7 6) (6 2) (3 4)))
+              #f)
+(check-equal? (fun? '((8 3) (4 2) (7 6) (6 2) (3 4)))
+              #t)
+(check-equal? (fun? '((d 4) (b 0) (b 9) (e 5) (g 4)))
+              #f)
+
+(define (a-pair? x)
+  (cond
+    ((atom? x) #f)
+    ((null? x) #f)
+    ((null? (cdr x)) #f)
+    ((null? (cdr (cdr x))) #t)
+    (else #f)))
+
+(check-equal? (a-pair? '(pear pear)) #t)
+(check-equal? (a-pair? '(3 7)) #t)
+(check-equal? (a-pair? '(full (house))) #t)
+
+(define (first p)
+  (car p))
+
+(define (second p)
+  (car (cdr p)))
+
+(define (build a b)
+  (cons a (cons b '())))
+
+(define (third l)
+  (car (cdr (cdr l))))
+
+(define (revrel rel)
+  (cond
+    ((null? rel) '())
+    (else
+     (cons
+      (revpair (car rel))
+      (revrel (cdr rel))))))
+
+(define (revpair pair)
+  (build (second pair) (first pair)))
+
+(check-equal? (revrel '((8 a) (pumpkin pie) (got sick)))
+              '((a 8) (pie pumpkin) (sick got)))
+
+(define (seconds lat)
+  (cond
+    ((null? lat) '())
+    (else
+     (cons (second (car lat)) (seconds (cdr lat))))))
+
+(define (fullfun? fun)
+  (set? (seconds fun)))
