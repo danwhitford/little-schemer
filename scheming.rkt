@@ -712,7 +712,7 @@
   (cond
     ((null? (cdr l-set)) (car l-set))
     (else     
-      (intersect (car l-set) (intersectall (cdr l-set))))))
+     (intersect (car l-set) (intersectall (cdr l-set))))))
 
 (check-equal? (intersectall '((a b c) (c a d e) (e f g h a b))) '(a))
 (check-equal? (intersectall '((6 pears and)
@@ -777,3 +777,102 @@
 
 (define (fullfun? fun)
   (set? (seconds fun)))
+
+(define (rember-f test? a lat)
+  (cond
+    ((null? lat) '())
+    ((test? (car lat) a) (cdr lat))
+    (else (cons (car lat) (rember-f test? a (cdr lat))))))
+
+(check-equal? (rember-f = 5 '(6 2 5 3))
+              '(6 2 3))
+(check-equal? (rember-f eq? 'jelly '(jelly beans are good))
+              '(beans are good))
+(check-equal? (rember-f equal? '(pop corn) '(lemonade (pop corn) and (cake)))
+              '(lemonade and (cake)))
+
+(define (eq?-c c)
+  (lambda (x)
+    (eq? x c)))
+
+(define eq?-salad (eq?-c 'salad))
+(check-equal? (eq?-salad 'salad) #t)
+(check-equal? (eq?-salad 'chips) #f)
+
+(define (rember-f2 test?)
+  (lambda (a lat)
+    (cond
+      ((null? lat) '())
+      ((test? (car lat) a) (cdr lat))
+      (else
+       (cons
+        (car lat)
+        ((rember-f2 test?) a (cdr lat)))))))
+
+(define rember-eq? (rember-f2 eq?))
+(check-equal? (rember-eq? 'tuna '(tuna salad is good)) '(salad is good))
+(check-equal? ((rember-f2 eq?) 'tuna '(tuna salad is good)) '(salad is good))
+(check-equal? ((rember-f2 eq?) 'tuna '(shrimp salad and tuna salad)) '(shrimp salad and salad))
+(check-equal? ((rember-f2 eq?) 'eq? '(equal? eq? eqan? eqlist? eqpair?)) '(equal? eqan? eqlist? eqpair?))
+
+(define (insertL-f test?)
+  (lambda (new old lat)
+    (cond
+      ((null? lat) '())
+      ((test? (car lat) old)
+       (cons new lat))
+      (else
+       (cons (car lat) ((insertL-f test?) new old (cdr lat)))))))
+
+(check-equal? ((insertL-f eq?) 'bacon 'eggs '(toast eggs coffee)) '(toast bacon eggs coffee))
+
+(define (insertR-f test?)
+  (lambda (new old lat)
+    (cond
+      ((null? lat) '())
+      ((test? (car lat) old)
+       (cons old (cons new (cdr lat))))
+      (else
+       (cons (car lat) ((insertR-f test?) new old (cdr lat)))))))
+
+(check-equal? ((insertR-f eq?) 'bacon 'eggs '(toast eggs coffee)) '(toast eggs bacon coffee))
+
+(define (insert-g test? insert-f)
+  (lambda (new old lat)
+    (cond
+      ((null? lat) '())
+      ((test? (car lat) old)
+       (insert-f new old (cdr lat)))
+      (else
+       (cons (car lat) ((insert-g test? insert-f) new old (cdr lat)))))))
+
+(define (seqL new old lat)
+  (cons new (cons old lat)))
+
+(define (seqR new old lat)
+  (cons old (cons new lat)))
+
+(check-equal? ((insert-g eq? seqL)
+               'bacon 'eggs '(toast eggs coffee))
+              '(toast bacon eggs coffee))
+(check-equal? ((insert-g eq? seqR)
+               'bacon 'eggs '(toast eggs coffee))
+              '(toast eggs bacon coffee))
+
+(define (insert-g2 seq)
+  (lambda (new old lat)
+    (cond
+      ((null? lat) '())
+      ((eq? (car lat) old)
+       (seq new old (cdr lat)))
+      (else
+       (cons (car lat) ((insert-g2 seq) new old (cdr lat)))))))
+
+(check-equal? ((insert-g2 seqL)
+               'bacon 'eggs '(toast eggs coffee))
+              '(toast bacon eggs coffee))
+(check-equal? ((insert-g2 seqR)
+               'bacon 'eggs '(toast eggs coffee))
+              '(toast eggs bacon coffee))
+(check-equal? ((insert-g2 (lambda (new old l) l)) #f 'sausage '(pizza with sausage and bacon))
+              '(pizza with and bacon))
