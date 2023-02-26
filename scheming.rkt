@@ -876,3 +876,118 @@
               '(toast eggs bacon coffee))
 (check-equal? ((insert-g2 (lambda (new old l) l)) #f 'sausage '(pizza with sausage and bacon))
               '(pizza with and bacon))
+
+(define (atom-to-function x)
+  (cond
+    ((eq? x '+) o+)
+    ((eq? x '*) X)
+    (else expo)))
+
+(check-equal? (atom-to-function (operator '(+ 3 5))) o+)
+
+(define (value2 nexp)
+  (cond
+    ((atom? nexp) nexp)
+    (else
+     ((atom-to-function (operator nexp))
+      (value2 (1st-sub-exp nexp))
+      (value2 (2nd-sub-exp nexp))))))
+
+(check-equal? (value2 '(+ 3 5)) 8)
+
+(define (multirember-f test?)
+  (lambda (a lat)
+    (cond
+      ((null? lat) '())
+      ((test? (car lat) a)
+       ((multirember-f test?) a (cdr lat)))
+      (else
+       (cons (car lat) ((multirember-f test?) a (cdr lat)))))))
+
+(check-equal? ((multirember-f eq?) 'tuna '(shrimp salad tuna salad and tuna))
+              '(shrimp salad salad and))
+
+(define mulitrember-eq?
+  (multirember-f eq?))
+
+(define eq-tuna?
+  (eq?-c 'tuna))
+
+(define (multiremberT test? lat)
+  (cond
+    ((null? lat) '())
+    ((test? (car lat))
+     (multiremberT test? (cdr lat)))
+    (else
+     (cons (car lat) (multiremberT test? (cdr lat))))))
+
+(check-equal? (multiremberT eq-tuna? '(shrimp salad tuna salad and tuna))
+              '(shrimp salad salad and))
+
+(define (a-friend? x y)
+  (null? y))
+
+(define (multirember&co a lat col)  
+  (cond
+    ((null? lat)
+     (col '() '()))
+    ((eq? (car lat) a)     
+     (multirember&co a
+                     (cdr lat)
+                     (lambda (newlat seen)                       
+                       (col newlat
+                            (cons (car lat) seen)))))
+    (else
+     (multirember&co a
+                     (cdr lat)
+                     (lambda (newlat seen)
+                       (col (cons (car lat) newlat)
+                            seen))))))
+
+(define (new-friend newlat seen)
+  (a-friend? newlat
+       (cons 'tuna seen)))
+
+(define (latest-friend newlat seen)
+  (a-friend? (cons 'and newlat)
+             seen))
+
+(check-equal? (multirember&co 'tuna '() a-friend?) #t)
+(check-equal? (multirember&co 'tuna '(tuna) a-friend?) #f)
+(check-equal? (multirember&co 'tuna '(and tuna) a-friend?) #f)
+(check-equal? (multirember&co 'salmon '(and tuna) a-friend?) #t)
+
+(define (multiinsertLR&co new oldL oldR lat col)
+  (cond
+    ((null? lat) (col '() 0 0))
+    ((eq? (car lat) oldL)
+     (multiinsertLR&co new oldL oldR
+                       (cdr lat)
+                       (lambda (newlat L R)
+                         (col (cons new (cons (car lat) newlat))
+                              (add1 L)
+                              R))))
+    ((eq? (car lat) oldR)
+     (multiinsertLR&co new oldL oldR
+                       (cdr lat)
+                       (lambda (newlat L R)
+                         (col (cons (car lat) (cons new newlat))
+                              L
+                              (add1 R)))))
+    (else
+     (multiinsertLR&co new oldL oldR
+                       (cdr lat)
+                       (lambda (newlat L R)
+                         (col (cons (car lat) newlat)
+                         L
+                         R))))))
+
+(define (mycol newlat L R)
+  (list 'cons newlat L R))
+
+(check-equal? (multiinsertLR&co 'cranberries 'fish 'chips '() mycol) '(cons () 0 0))
+(check-equal? (multiinsertLR&co 'salty 'fish 'chips
+                                '(chips and fish or fish and chips)
+                                mycol)
+              '(cons (chips salty and salty fish or salty fish and chips salty) 2 2))
+
