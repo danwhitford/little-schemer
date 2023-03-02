@@ -576,15 +576,6 @@
 (check-equal? (shadow->int '( ()() )) 2)
 (check-equal? (shadow->int '( ()()()()() )) 5)
 
-(define (value nexp)
-  (cond
-    ((atom? nexp)
-     nexp)    
-    ((eq? (operator nexp) '+)
-     (+ (value (1st-sub-exp nexp)) (value (2nd-sub-exp nexp))))
-    ((eq? (car nexp) '^)
-     (expo (value (1st-sub-exp nexp)) (value (2nd-sub-exp nexp))))))
-
 (define (1st-sub-exp nexp)
   (car (cdr nexp)))
 
@@ -593,10 +584,6 @@
 
 (define (operator nexp)
   (car nexp))
-
-(check-equal? (value 13) 13)
-(check-equal? (value '(+ 1 3)) 4)
-(check-equal? (value '(+ 1 (^ 3 4))) 82)
 
 (define (shadow-zero? n)
   (null? n))
@@ -946,7 +933,7 @@
 
 (define (new-friend newlat seen)
   (a-friend? newlat
-       (cons 'tuna seen)))
+             (cons 'tuna seen)))
 
 (define (latest-friend newlat seen)
   (a-friend? (cons 'and newlat)
@@ -979,8 +966,8 @@
                        (cdr lat)
                        (lambda (newlat L R)
                          (col (cons (car lat) newlat)
-                         L
-                         R))))))
+                              L
+                              R))))))
 
 (define (mycol newlat L R)
   (list 'cons newlat L R))
@@ -991,3 +978,319 @@
                                 mycol)
               '(cons (chips salty and salty fish or salty fish and chips salty) 2 2))
 
+(define (looking a lat)
+  (keep-looking a (pick 1 lat) lat))
+
+(define (keep-looking a n lat)
+  (cond
+    ((number? n)
+     (keep-looking a (pick n lat) lat))
+    (else
+     (eq? n a))))
+
+(check-equal? (keep-looking 'caviar 3 '(6 2 4 caviar 5 7 3))
+              (keep-looking 'caviar 4 '(6 2 4 caviar 5 7 3)))
+(check-equal? (keep-looking 'caviar 3 '(6 2 4 caviar 5 7 3)) #t)
+(check-equal? (looking 'caviar '(6 2 4 caviar 5 7 3)) #t)
+(check-equal? (looking 'caviar '(6 2 grits caviar 5 7 3)) #f)
+
+(define (shift x)  
+  (cons (car (car x))
+        (cons
+         (cons (car (cdr (car x))) (cdr x))
+         '())))
+              
+(check-equal? (shift '((a b) c))
+              '(a (b c)))
+(check-equal? (shift '((a b) (c d)))
+              '(a (b (c d))))
+
+(define (length* pora)
+  (cond
+    ((atom? pora) 1)
+    (else
+     (o+ (length* (first pora))
+         (length* (second pora))))))
+
+(check-equal? (length* 'foo) 1)
+(check-equal? (length* '(cheese chips)) 2)
+(check-equal? (length* '((beef beer) baccy)) 3)
+(check-equal? (length* '((foo bar) (baz boo))) 4)
+(check-equal? (length* '((beef (beer bread)) baccy)) 4)
+
+(define (weight* pora)
+  (cond
+    ((atom? pora) 1)
+    (else
+     (+ (* (weight* (first pora)) 2)
+        (weight* (second pora))))))
+
+(check-equal? (weight* '((a b) c)) 7)
+(check-equal? (weight* '(a (b c))) 5)
+
+(define (shuffle pora)
+  (cond
+    ((atom? pora) pora)
+    ((a-pair? (first pora))
+     (shuffle (revpair pora)))
+    (else
+     (build (first pora)
+            (shuffle (second pora))))))
+
+(check-equal? (shuffle '(a (b c))) '(a (b c)))
+(check-equal? (shuffle '(a b)) '(a b))
+;; Infinite! (check-equal? (shuffle '((a b) (c d))) '(foo))
+
+(define (C n)
+  (cond
+    ((one? n) 1)
+    ((even? n) (C (/ n 2)))
+    (else (C (add1 (* 3 n))))))
+
+(define (C-dist n)  
+  (cond
+    ((one? n) 0)
+    ((even? n) (add1 (C-dist (/ n 2))))
+    (else (add1 (C-dist (add1 (* 3 n)))))))
+
+(define (A n m)
+  (cond
+    ((zero? n) (add1 m))
+    ((zero? m) (A (sub1 n) 1))
+    (else
+     (A (sub1 n) (A n (sub1 m))))))
+
+(check-equal? (A 1 0) 2)
+(check-equal? (A 1 1) 3)
+(check-equal? (A 2 2) 7)
+
+(define (Y le)
+  ((lambda (f) (f f))
+   (lambda (f)
+     (le (lambda (x) ((f f) x))))))
+
+(check-equal? 
+ ((Y (lambda (f) (lambda (lst)
+                   (if (null? lst) 0 (add1 (f (cdr lst)))))))
+  '(bacon beer and beans))
+ 4)
+
+(define new-entry build)
+
+(define (lookup-in-entry-help name names values entry-f)
+  (cond
+    ((null? names)
+     (entry-f name))
+    ((eq? name (car names))
+     (car values))
+    (else
+     (lookup-in-entry-help name (cdr names) (cdr values) entry-f))))
+
+(define (lookup-in-entry name entry entry-f)
+  (lookup-in-entry-help name
+                        (first entry)
+                        (second entry)
+                        entry-f))
+
+(check-equal? (lookup-in-entry 'entree (new-entry '(appetizer entree beverage) '(food tastes good)) identity)
+              'tastes)
+(check-equal? (lookup-in-entry 'frogs (new-entry '(appetizer entree beverage) '(food tastes good)) identity)
+              'frogs)
+
+(define extend-table cons)
+
+(define (lookup-in-table name table table-f)
+  (cond
+    ((null? table)
+     (table-f name))
+    (else
+     (lookup-in-entry
+      name
+      (car table)
+      (lambda (name)
+        (lookup-in-table name
+                         (cdr table)
+                         table-f))))))
+
+(check-equal? (lookup-in-table 'entree
+                               '(((entree dessert)
+                                  (spaghetti spumoni))
+                                 ((appetizer entree beverage)
+                                  (food tastes good)))
+                               identity)
+              'spaghetti)
+(check-equal? (lookup-in-table 'beverage
+                               '(((entree dessert)
+                                  (spaghetti spumoni))
+                                 ((appetizer entree beverage)
+                                  (food tastes good)))
+                               identity)
+              'good)
+
+(define (expression-to-action e)
+  (cond
+    ((atom? e) (actom-to-action e))
+    (else
+     (list-to-action e))))
+
+(define (actom-to-action e)
+  (cond
+    ((number? e) *const)
+    ((eq? e #t) *const)
+    ((eq? e #f) *const)
+    ((eq? e 'cons) *const)
+    ((eq? e 'car) *const)
+    ((eq? e 'cdr) *const)
+    ((eq? e 'null?) *const)
+    ((eq? e 'eq?) *const)
+    ((eq? e 'atom?) *const)
+    ((eq? e 'zero?) *const)
+    ((eq? e 'add1) *const)
+    ((eq? e 'sub1) *const)
+    ((eq? e 'number?) *const)
+    (else
+     *identifier)))
+
+(define (list-to-action e)
+  (cond
+    ((atom? (car e))
+     (cond
+       ((eq? (car e) 'quote)
+        *quote)
+       ((eq? (car e) 'lambda)
+        *lambda)
+       ((eq? (car e) 'cond)
+        *cond)
+       (else
+        *application)))
+    (else *application)))
+
+(define (value e)
+  (meaning e '()))
+
+(define (meaning e table)
+  ((expression-to-action e) e table))
+
+(define (*const e table)
+  (cond
+    ((number? e) e)
+    ((eq? e #t) #t)
+    ((eq? e #f) #f)
+    (else (build 'primitive e))))
+
+(define (*quote e table)
+  (text-of e))
+
+(define (text-of second)
+  (quote second))
+
+(define (*identifier e table)
+  (lookup-in-table e table initial-table))
+
+(define (initial-table name)
+  (car '()))
+
+(define (*lambda e table)
+  (build 'non-primitive
+         (cons table (cdr e))))
+
+(define table-of first)
+(define formals-of second)
+(define body-of third)
+
+(define (evcon lines table)
+  (cond
+    ((else? (question-of (car lines)))
+     (meaning (answer-of (car lines))
+              table))
+    ((meaning (question-of (car lines))
+              table)
+     (meaning (answer-of (car lines))
+              table))
+    (else (evcon (cdr lines) table))))
+
+(define (else? el)
+  (cond
+    ((atom? el) (eq? el 'else))
+    (else #f)))
+
+(define question-of first)
+(define answer-of second)
+
+(define (*cond e table)
+  (evcon (cond-lines-of e) table))
+(define cond-lines-of cdr)
+
+(define (evlis args table)
+  (cond
+    ((null? args) '())
+    (else
+     (cons (meaning (car args) table)
+           (evlis (cdr args) table)))))
+
+(define (*application e table)
+  (apply
+   (meaning (function-of e) table)
+   (evlis (arguments-of e) table)))
+
+(define function-of car)
+(define arguments-of cdr)
+
+(define (primitive? l)
+  (eq? (first l) 'primitive))
+
+(define (non-primitive? l)
+  (eq? (first l) 'non-primitive))
+
+(define (apply fun vals)
+  (cond
+    ((primitive? fun)
+     (apply-primitive (second fun) vals))
+    ((non-primitive? fun)
+     (apply-closure (second fun) vals))))
+
+(define (apply-primitive name vals)
+  (cond
+    ((eq? name 'cons)
+     (cons (first vals) (second vals)))
+    ((eq? name 'car)
+     (car (first vals)))
+    ((eq? name 'cdr)
+     (cdr (first vals)))
+    ((eq? name 'null?)
+     (null? (first vals)))
+    ((eq? name 'eq?)
+     (eq? (first vals) (second vals)))
+    ((eq? name 'atom?)
+     (:atom? (first vals)))
+    ((eq? name 'zero?)
+     ((zero? (first vals))))
+    ((eq? name 'add1)
+     (add1 (first vals)))
+    ((eq? name 'sub1)
+     (sub1 (first vals)))
+    ((eq? name 'number?)
+     (number? (first vals)))))
+
+(define (apply-closure closure vals)
+  (meaning (body-of closure)
+           (extend-table
+            (new-entry
+             (formals-of closure)
+             vals)
+            (table-of closure))))
+
+(define (:atom? x)
+  (cond
+    ((atom? x) #t)
+    ((null? x) #f)
+    ((eq? (car x) 'primitive)
+     #t)
+    ((eq? (car x) 'non-primitive)
+     #f)
+    (else
+     #f)))
+
+(check-equal? (value 13) 13)
+(check-equal? (value '(add1 5)) 6)
+(check-equal? (value '(sub1 5)) 4)
